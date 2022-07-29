@@ -434,7 +434,7 @@ static int setup_tx_sg_list(struct ndis_device *wnd, struct sk_buff *skb,
 		sg_element = &oob_data->wrap_tx_sg_list.elements[0];
 		sg_element->address =
 			PCI_DMA_MAP_SINGLE(wnd->wd->pci.pdev, skb->data,
-					   skb->len, PCI_DMA_TODEVICE);
+					   skb->len, DMA_TO_DEVICE);
 		sg_element->length = skb->len;
 		oob_data->wrap_tx_sg_list.nent = 1;
 		oob_data->ext.info[ScatterGatherListPacketInfo] =
@@ -453,7 +453,7 @@ static int setup_tx_sg_list(struct ndis_device *wnd, struct sk_buff *skb,
 	sg_element->length = skb_headlen(skb);
 	sg_element->address =
 		PCI_DMA_MAP_SINGLE(wnd->wd->pci.pdev, skb->data,
-				   skb_headlen(skb), PCI_DMA_TODEVICE);
+				   skb_headlen(skb), DMA_TO_DEVICE);
 	for (i = 0; i < skb_shinfo(skb)->nr_frags; i++) {
 		skb_frag_t *frag = &skb_shinfo(skb)->frags[i];
 		sg_element++;
@@ -463,13 +463,13 @@ static int setup_tx_sg_list(struct ndis_device *wnd, struct sk_buff *skb,
 		sg_element->length = frag->size;
 #endif
 		sg_element->address =
-			pci_map_page(wnd->wd->pci.pdev, skb_frag_page(frag),
+			dma_map_page((struct device *) wnd->wd->pci.pdev, skb_frag_page(frag),
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,4,0)
 				     skb_frag_off(frag), skb_frag_size(frag),
 #else
 				     frag->page_offset, frag->size,
 #endif
-				     PCI_DMA_TODEVICE);
+				     DMA_TO_DEVICE);
 		TRACE3("%llx, %u", sg_element->address, sg_element->length);
 	}
 	oob_data->ext.info[ScatterGatherListPacketInfo] = sg_list;
@@ -486,13 +486,13 @@ static void free_tx_sg_list(struct ndis_device *wnd,
 	sg_element = sg_list->elements;
 	TRACE3("%p, %d", sg_list, sg_list->nent);
 	PCI_DMA_UNMAP_SINGLE(wnd->wd->pci.pdev, sg_element->address,
-			     sg_element->length, PCI_DMA_TODEVICE);
+			     sg_element->length, DMA_TO_DEVICE);
 	if (sg_list->nent == 1)
 		EXIT3(return);
 	for (i = 1; i < sg_list->nent; i++, sg_element++) {
 		TRACE3("%llx, %u", sg_element->address, sg_element->length);
-		pci_unmap_page(wnd->wd->pci.pdev, sg_element->address,
-			       sg_element->length, PCI_DMA_TODEVICE);
+		dma_unmap_page((struct device *) wnd->wd->pci.pdev, sg_element->address,
+			       sg_element->length, DMA_TO_DEVICE);
 	}
 	TRACE3("%p", sg_list);
 	kfree(sg_list);

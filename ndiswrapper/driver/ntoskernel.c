@@ -821,8 +821,12 @@ wstdcall void *WIN_FUNC(ExAllocatePoolWithTag,3)
 		addr = kmalloc(size, irql_gfp());
 	else {
 		if (irql_gfp() & GFP_ATOMIC) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+			addr = __vmalloc(size, GFP_ATOMIC | __GFP_HIGHMEM);
+#else
 			addr = __vmalloc(size, GFP_ATOMIC | __GFP_HIGHMEM,
 					 PAGE_KERNEL);
+#endif /* kernel 5.8 */
 			TRACE1("%p, %zu", addr, size);
 		} else {
 			addr = vmalloc(size);
@@ -1643,7 +1647,11 @@ wstdcall NTSTATUS WIN_FUNC(PsTerminateSystemThread,1)
 	} else
 		ERROR("couldn't find thread for task: %p", current);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	kthread_complete_and_exit(NULL, status);
+#else
 	complete_and_exit(NULL, status);
+#endif
 	ERROR("oops: %p, %d", thread->task, thread->pid);
 	return STATUS_FAILURE;
 }

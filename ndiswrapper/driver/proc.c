@@ -104,7 +104,32 @@ static int do_proc_make_entry(const char *name, umode_t mode,
 	return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+#define PROC_DECLARE_RO(name) \
+	static int proc_##name##_open(struct inode *inode, struct file *file) \
+	{ \
+		return single_open(file, proc_##name##_read, pde_data(inode)); \
+	} \
+	static const struct proc_ops name##_fops = { \
+		.proc_open = proc_##name##_open, \
+		.proc_read = seq_read, \
+		.proc_lseek = seq_lseek, \
+		.proc_release = single_release, \
+	};
+
+#define PROC_DECLARE_RW(name) \
+	static int proc_##name##_open(struct inode *inode, struct file *file) \
+	{ \
+		return single_open(file, proc_##name##_read, pde_data(inode)); \
+	} \
+	static const struct proc_ops name##_fops = { \
+		.proc_open = proc_##name##_open, \
+		.proc_read = seq_read, \
+		.proc_lseek = seq_lseek, \
+		.proc_release = single_release, \
+		.proc_write = proc_##name##_write, \
+	};
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
 #define PROC_DECLARE_RO(name) \
 	static int proc_##name##_open(struct inode *inode, struct file *file) \
 	{ \
@@ -372,7 +397,11 @@ static int proc_settings_read(struct seq_file *sf, void *v)
 static ssize_t proc_settings_write(struct file *file, const char __user *buf,
 				   size_t count, loff_t *ppos)
 {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,16,0)
+	struct ndis_device *wnd = pde_data(file_inode(file));
+#else
 	struct ndis_device *wnd = PDE_DATA(file_inode(file));
+#endif
 	char setting[MAX_PROC_STR_LEN], *p;
 	unsigned int i;
 	NDIS_STATUS res;

@@ -147,6 +147,11 @@ static int load_sys_files(struct wrap_driver *driver,
 		TRACE1("image size: %zu bytes", load_driver->sys_files[i].size);
 
 #ifdef CONFIG_X86_64
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+		pe_image->image =
+			__vmalloc(load_driver->sys_files[i].size,
+				  GFP_KERNEL | __GFP_HIGHMEM);
+#else
 #ifdef PAGE_KERNEL_EXECUTABLE
 		pe_image->image =
 			__vmalloc(load_driver->sys_files[i].size,
@@ -160,6 +165,7 @@ static int load_sys_files(struct wrap_driver *driver,
 #else
 #error x86_64 should have either PAGE_KERNEL_EXECUTABLE or PAGE_KERNEL_EXEC
 #endif
+#endif /* kernel 5.8 */
 #else
 		/* hate to play with kernel macros, but PAGE_KERNEL_EXEC is
 		 * not available to modules! */

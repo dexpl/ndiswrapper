@@ -413,6 +413,9 @@ static int fix_pe_image(struct pe_image *pe)
 
 	image_size = pe->opt_hdr->SizeOfImage;
 #ifdef CONFIG_X86_64
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+	image = __vmalloc(image_size, GFP_KERNEL | __GFP_HIGHMEM);
+#else
 #ifdef PAGE_KERNEL_EXECUTABLE
 	image = __vmalloc(image_size, GFP_KERNEL | __GFP_HIGHMEM,
 			  PAGE_KERNEL_EXECUTABLE);
@@ -422,6 +425,7 @@ static int fix_pe_image(struct pe_image *pe)
 #else
 #error x86_64 should have either PAGE_KERNEL_EXECUTABLE or PAGE_KERNEL_EXEC
 #endif
+#endif /* kernel 5.8 */
 #else
 #ifdef cpu_has_nx
 	/* hate to play with kernel macros, but PAGE_KERNEL_EXEC is

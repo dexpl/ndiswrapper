@@ -945,18 +945,18 @@ wstdcall NDIS_STATUS WIN_FUNC(NdisMAllocateMapRegisters,5)
 		EXIT2(return NDIS_STATUS_RESOURCES);
 	}
 	if (dmasize == NDIS_DMA_24BITS) {
-		if (pci_set_dma_mask(wnd->wd->pci.pdev, DMA_BIT_MASK(24)) ||
-		    pci_set_consistent_dma_mask(wnd->wd->pci.pdev,
+		if (dma_set_mask((struct device *) wnd->wd->pci.pdev, DMA_BIT_MASK(24)) ||
+		    dma_set_coherent_mask((struct device *) wnd->wd->pci.pdev,
 						DMA_BIT_MASK(24)))
 			WARNING("setting dma mask failed");
 	} else if (dmasize == NDIS_DMA_32BITS) {
 		/* consistent dma is in low 32-bits by default */
-		if (pci_set_dma_mask(wnd->wd->pci.pdev, DMA_BIT_MASK(32)))
+		if (dma_set_mask((struct device *) wnd->wd->pci.pdev, DMA_BIT_MASK(32)))
 			WARNING("setting dma mask failed");
 #ifdef CONFIG_X86_64
 	} else if (dmasize == NDIS_DMA_64BITS) {
-		if (pci_set_dma_mask(wnd->wd->pci.pdev, DMA_BIT_MASK(64)) ||
-		    pci_set_consistent_dma_mask(wnd->wd->pci.pdev,
+		if (dma_set_mask((struct device *) wnd->wd->pci.pdev, DMA_BIT_MASK(64)) ||
+		    dma_set_coherent_mask((struct device *) wnd->wd->pci.pdev,
 						DMA_BIT_MASK(64)))
 			WARNING("setting dma mask failed");
 		else
@@ -1045,7 +1045,7 @@ wstdcall void WIN_FUNC(NdisMStartBufferPhysicalMapping,6)
 	wnd->dma_map_addr[index] =
 		PCI_DMA_MAP_SINGLE(wnd->wd->pci.pdev,
 				   MmGetSystemAddressForMdl(buf),
-				   MmGetMdlByteCount(buf), PCI_DMA_TODEVICE);
+				   MmGetMdlByteCount(buf), DMA_TO_DEVICE);
 	phy_addr_array[0].phy_addr = wnd->dma_map_addr[index];
 	phy_addr_array[0].length = MmGetMdlByteCount(buf);
 	TRACE4("%llx, %d, %d", phy_addr_array[0].phy_addr,
@@ -1074,7 +1074,7 @@ wstdcall void WIN_FUNC(NdisMCompleteBufferPhysicalMapping,3)
 	TRACE4("%llx", (unsigned long long)wnd->dma_map_addr[index]);
 	if (wnd->dma_map_addr[index]) {
 		PCI_DMA_UNMAP_SINGLE(wnd->wd->pci.pdev, wnd->dma_map_addr[index],
-				     MmGetMdlByteCount(buf), PCI_DMA_TODEVICE);
+				     MmGetMdlByteCount(buf), DMA_TO_DEVICE);
 		wnd->dma_map_addr[index] = 0;
 	} else
 		WARNING("map registers at %u not used", index);
@@ -2293,7 +2293,7 @@ wstdcall void NdisMIndicateReceivePacket(struct ndis_mp_block *nmb,
 			if (in_interrupt())
 				netif_rx(skb);
 			else
-				netif_rx_ni(skb);
+				netif_receive_skb(skb);
 		} else {
 			WARNING("couldn't allocate skb; packet dropped");
 			atomic_inc_var(wnd->net_stats.rx_dropped);
@@ -2441,7 +2441,7 @@ wstdcall void EthRxIndicateHandler(struct ndis_mp_block *nmb, void *rx_ctx,
 		if (in_interrupt())
 			netif_rx(skb);
 		else
-			netif_rx_ni(skb);
+			netif_receive_skb(skb);
 	}
 
 	EXIT3(return);
@@ -2506,7 +2506,7 @@ wstdcall void NdisMTransferDataComplete(struct ndis_mp_block *nmb,
 	if (in_interrupt())
 		netif_rx(skb);
 	else
-		netif_rx_ni(skb);
+		netif_receive_skb(skb);
 }
 
 /* called via function pointer */
@@ -2629,8 +2629,8 @@ wstdcall NDIS_STATUS WIN_FUNC(NdisMInitializeScatterGatherDma,3)
 #ifdef CONFIG_X86_64
 	if (!dma64_supported) {
 		TRACE1("64-bit DMA size is not supported");
-		if (pci_set_dma_mask(wnd->wd->pci.pdev, DMA_BIT_MASK(32)) ||
-		    pci_set_consistent_dma_mask(wnd->wd->pci.pdev,
+		if (dma_set_mask((struct device *) wnd->wd->pci.pdev, DMA_BIT_MASK(32)) ||
+		    dma_set_coherent_mask((struct device *) wnd->wd->pci.pdev,
 						DMA_BIT_MASK(32)))
 			WARNING("setting dma mask failed");
 	}
